@@ -3,7 +3,6 @@
 ######################
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from rdkit.Chem.Draw import SimilarityMaps
 from numpy import loadtxt
 import numpy as np
 import pandas as pd
@@ -33,19 +32,16 @@ from pathlib import Path
 # Page Title
 ######################
 
-st.write("<h1 style='text-align: center; color: #FF8C00;'> Toxicity Estimator</h1>", unsafe_allow_html=True)
-st.write("<h5 style='text-align: justify; color: black;'> Assessment of the acute toxicity of xenobiotics in oral and intravenous administration to rats. Find the toxicity of a compound in a database or predict its hazard level using QSAR models. Classification by toxicity classes for oral administration of toxicants is carried out in accordance with the classification of the World Health Organization</h5>", unsafe_allow_html=True)
-if st.sidebar.button('Application description'):
-    st.sidebar.write('The Toxicity Estimator application  allows to predict the level of toxicity (LD50,rat, oral or intravenous) for  compounds.  This application makes predictions based on Quantitative Structure-Activity Relationship (QSAR) models build on curated datasets. If experimental toxicity values are available for the compound, they are displayed in the summary table. The  models were developed using open-source chemical descriptors based on Morgan fingerprints and MACCS keys, along with the CatBoost. CatBoost is a machine learning method based on gradient boosting over decision trees. The models were generated applying the best practices for QSAR model development and validation widely accepted by the community. The applicability domain (AD) of the models was calculated as Dcutoff = ⟨D⟩ + Zs, where «Z» is a similarity threshold parameter defined by a user (0.5 in this study) and «⟨D⟩» and «s» are the average and standard deviation, respectively, of all Euclidian distances in the multidimensional descriptor space between each compound and its nearest neighbors for all compounds in the training set. Batch processing is available through https://github.com/ovttiras/Toxicity_Estimator.')
+st.write("<h1 style='text-align: center; color: #FF7F50;'> HDAC3_VS_assistant</h1>", unsafe_allow_html=True)
+st.write("<h3 style='text-align: center; color: #483D8B;'> The application provides an alternative method for assessing the potential of chemicals to be Histone deacetylase 3 (HDAC3) inhibitors.</h3>", unsafe_allow_html=True)
 
-
-with open("manual.pdf", "rb") as file:
-    btn=st.sidebar.download_button(
-    label="Click to download brief manual",
-    data=file,
-    file_name="manual of Toxicity Estimator.pdf",
-    mime="application/octet-stream"
-)
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True) 
 
 hide_streamlit_style = """
             <style>
@@ -54,6 +50,38 @@ hide_streamlit_style = """
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+col1, col2, col3, col4 = st.columns(4)
+
+
+with col1:
+   st.header("Machine learning")
+   st.image("figures/machine-learning.png", width=125)
+   st.text_area('Text to analyze', '''This application makes predictions based on Quantitative Structure-Activity Relationship (QSAR) models build on curated datasets generated from scientific articles. The  models were developed using open-source chemical descriptors based on Morgan fingerprints and MACCS-166 keys, along with the gradient boosting method (GBM) and  support vector machine (SVM), using Python 3.10''', height=350, label_visibility="hidden" )
+
+
+with col2:
+   st.header("OECD principles")
+   st.image("figures/target.png", width=125)
+   st.text_area('Text to analyze', '''We follow the best practices for model development and validation recommended by guidelines of the Organization for Economic Cooperation and Development (OECD).  s that contribute to HDAC6 activity. The applicability domain (AD) of the models was calculated as Dcutoff = ⟨D⟩ + Zs, where «Z» is a similarity threshold parameter defined by a user (0.5 in this study) and «⟨D⟩» and «s» are the average and standard deviation, respectively, of all Euclidian distances in the multidimensional descriptor space between each compound and its nearest neighbors for all compounds in the training set. ''', height=350, label_visibility="hidden" )
+# st.write('Sentiment:', run_sentiment_analysis(txt))
+
+
+with col3:
+   st.header("Acute toxicity")
+   st.image("figures/toxicity.png", width=125)
+   st.text_area('Text to analyze', '''The application also allows to predict the level of toxicity (mouse, intravenous, LD50) of the studied compounds. One of the most common methods of administration of antitumor drugs is an intravenous one; it has a number of pharmacokinetic features, e.g., short-term but high active-substance concentration peaks, which can ultimately increase the acute toxicity of the drug. Therefore, a preliminary estimation of the toxicity of potential drugs during intravenous administration is extremely important ''', height=350, label_visibility="hidden" )
+with col4:
+   st.header("Structural Alert")
+   st.image("figures/alert.png", width=125)
+   st.text_area('Text to analyze', '''Brenk filters which consists in a list of 105 fragments to be putatively toxic, chemically reactive, metabolically unstable or to bear properties responsible for poor pharmacokinetics. PAINS  are molecules containing substructures showing potent response in assays irrespective of the protein target. Such fragments, yielding false positive biological output.''', height=350, label_visibility="hidden" )
+
+with open("manual.pdf", "rb") as file:
+    btn=st.download_button(
+    label="Click to download brief manual",
+    data=file,
+    file_name="manual of Toxicity Estimator.pdf",
+    mime="application/octet-stream"
+)
 
 def rdkit_numpy_convert(f_vs):
     output = []
@@ -201,12 +229,18 @@ class Models():
         self.model = pickle.load(open(self.way_model, 'rb'))
         self.df_exp = pd.read_csv(self.way_exp_data)
         self.res = (self.df_exp.groupby("inchi").apply(lambda x: x.drop(columns="inchi").to_dict("records")).to_dict())
+
         # Calculate molecular descriptors
-        self.desc_ws = calcfp(m)
-        self.path = Path(self.path_feature_name_rfecv)
-        self.feature_name_rfecv_MF = self.path.read_text().splitlines()
-        self.f_vs_red=self.desc_ws[self.feature_name_rfecv_MF]
-        self.X = self.f_vs_red.to_numpy().reshape(1, -1)
+        if self.activity=='HDAC3':
+            self.desc_ws = calcfp(m)
+            self.path = Path(self.path_feature_name_rfecv)
+            self.feature_name_rfecv_MF = self.path.read_text().splitlines()
+            self.f_vs_red=self.desc_ws[self.feature_name_rfecv_MF]
+            self.X = self.f_vs_red.to_numpy().reshape(1, -1)
+        else:
+            self.f_vs=[MACCSkeys.GenMACCSKeys(m)]
+            self.X = rdkit_numpy_convert(self.f_vs)
+
         self.zf = zipfile.ZipFile(self.descripror_way_zip) 
         self.df = pd.read_csv(self.zf.open(self.descriprors))
         self.x_tr=self.df.to_numpy()
@@ -215,126 +249,163 @@ class one_molecules(Models):
     def seach_predic(self):
         # search experimental activity value
         if inchi in self.res:
-            exp=round(self.res[inchi][0]['pchembl_value_mean'],2)
-            std=round(self.res[inchi][0]['pchembl_value_std'],4)
-            chembl_id=str(self.res[inchi][0]['molecule_chembl_id']) 
-            value_ped_tox='see experimental value'
-            cpd_AD_vs_tox='-'            
+            if self.activity=='HDAC3':
+                exp=round(self.res[inchi][0]['pchembl_value_mean'],2)
+                std=round(self.res[inchi][0]['pchembl_value_std'],4)
+                chembl_id=str(self.res[inchi][0]['molecule_chembl_id']) 
+                value_pred_tox='see experimental value'
+                cpd_AD_vs_tox='-' 
+            else:
+                exp_tox=float(self.res[inchi][0]['TOX_VALUE'])
+                cas_id=str(self.res[inchi][0]['CAS_Number'])
+                value_pred_tox='see experimental value'
+                cpd_AD_vs_tox='-'            
         else:
          #Predict activity
-            y_pred_con_act = self.model.predict(self.X)           
-            value_ped_tox=round(y_pred_con_act[0], 3)            
-            # Estimination AD for activity
-            neighbors_k_vs_tox = pairwise_distances(self.x_tr, Y=self.X, n_jobs=-1)
-            neighbors_k_vs_tox.sort(0)
-            similarity_vs_tox = neighbors_k_vs_tox
-            cpd_value_vs_tox = similarity_vs_tox[0, :]
-            cpd_AD_vs_tox = np.where(cpd_value_vs_tox <= self.model_AD_limit, "Inside AD", "Outside AD")
-            exp="-"
-            std='-'
-            chembl_id="not detected" 
+            if self.activity=='HDAC3':
+                y_pred_con_act = self.model.predict(self.X)           
+                value_pred_tox=round(y_pred_con_act[0], 3)            
+                # Estimination AD for activity
+                neighbors_k_vs_tox = pairwise_distances(self.x_tr, Y=self.X, n_jobs=-1)
+                neighbors_k_vs_tox.sort(0)
+                similarity_vs_tox = neighbors_k_vs_tox
+                cpd_value_vs_tox = similarity_vs_tox[0, :]
+                cpd_AD_vs_tox = np.where(cpd_value_vs_tox <= self.model_AD_limit, "Inside AD", "Outside AD")
+                exp="-"
+                std='-'
+                chembl_id="not detected"
+            else:
+                y_pred_con_tox = self.model.predict(self.X)           
+                y_pred_con_tox_t=y_pred_con_tox[0]
+                MolWt=ExactMolWt(Chem.MolFromSmiles(smiles))
+                value_pred_tox=round((10**(y_pred_con_tox_t*-1)*1000)*MolWt, 4)
+                # Estimination AD for toxicity
+                neighbors_k_vs_tox = pairwise_distances(self.x_tr, Y=self.X, n_jobs=-1)
+                neighbors_k_vs_tox.sort(0)
+                similarity_vs_tox = neighbors_k_vs_tox
+                cpd_value_vs_tox = similarity_vs_tox[0, :]
+                cpd_AD_vs_tox = np.where(cpd_value_vs_tox <= self.model_AD_limit, "Inside AD", "Outside AD")
+                exp_tox="-"
+                cas_id="not detected"
 
-        if self.activity=='Oral':
+
+        if self.activity=='Toxicity':
             st.header('**Prediction results:**')    
-            common_inf = pd.DataFrame({'SMILES':smiles, 'Predicted value toxicity, rat, oral, Ld50, mg/kg': value_ped_tox,
+            common_inf = pd.DataFrame({'SMILES':smiles, 'Predicted value toxicity, mice, intravenous, Ld50, mg/kg': value_pred_tox,
                 'Applicability domain_tox': cpd_AD_vs_tox,
                 'Experimental value toxicity, rat, oral, Ld50': exp_tox, 
                 'CAS number': cas_id}, index=[1])
             predictions_pred=common_inf.astype(str) 
-            st.dataframe(predictions_pred.style.apply(toxicity_labels, axis=1))
-            st.write('Classification into toxicity classes (see column "Hazard_Categories") is carried out in accordance with the classification of the World Health Organization (https://www.who.int/publications/i/item/9789240005662)')
-            st.image('Toxicity_labels.png') 
+            st.dataframe(predictions_pred)
+
         else:
             st.header('**Prediction results:**')             
-            common_inf = pd.DataFrame({'SMILES':smiles, 'Predicted value pIC50': value_ped_tox,
+            common_inf = pd.DataFrame({'SMILES':smiles, 'Predicted value pIC50': value_pred_tox,
             'Applicability domain_tox': cpd_AD_vs_tox,
             'Experimental value toxicity,rat, intravenous, Ld50': exp, 'STD': std, 
             'chembl_ID': chembl_id}, index=[1])
             predictions_pred=common_inf.astype(str) 
             st.dataframe(predictions_pred) 
 
-class set_molecules(Models):
-    def seach_predic_csv(self):
-        # search experimental value     
-        exp_tox=[]
-        cas_id=[]
-        y_pred_con_tox=[]
-        cpd_AD_vs_tox=[]
-        struct=[]
-        number =[]
-        count=0
-        for m in moldf:
-            inchi = str(Chem.MolToInchi(m))
-            i=Chem.MolToSmiles(m)
-            struct.append(i)
-            # search experimental toxicity value
-            if inchi in self.res:
-                exp_tox.append(self.res[inchi][0]['TOX_VALUE'])
-                cas_id.append(str(self.res[inchi][0]['CAS_Number']))
-                y_pred_con_tox.append('see experimental value')
-                cpd_AD_vs_tox.append('-')
-                count+=1         
-                number.append(count)
-                
-            else:
-                # Estimination AD for toxicity
-                neighbors_k_vs_tox = pairwise_distances(self.x_tr, Y=self.X, n_jobs=-1)
-                neighbors_k_vs_tox.sort(0)
-                similarity_vs_tox = neighbors_k_vs_tox
-                cpd_value_vs_tox = similarity_vs_tox[0, :]
-                cpd_AD_vs_tox_r = np.where(cpd_value_vs_tox <= self.model_AD_limit, "Inside AD", "Outside AD")
-                # calculate toxicity
-                y_pred_tox = self.model.predict(self.X)                    
-                MolWt=ExactMolWt(m)
-                value_ped_tox=(10**(y_pred_tox*-1)*1000)*MolWt
-                value_ped_tox=round(value_ped_tox[0], 4)
-                y_pred_con_tox.append(value_ped_tox)
-                cpd_AD_vs_tox.append(cpd_AD_vs_tox_r[0])
-                exp_tox.append("-")
-                cas_id.append("not detected")
-                count+=1         
-                number.append(count) 
+class set_molecules(Models):    
+    def seach_predic_csv(self):        
+        if self.activity=='HDAC3':
+            # search experimental value     
+            exp_tox=[]
+            std=[]
+            chembl_id=[]
+            y_pred_con_tox=[]
+            cpd_AD_vs_tox=[]
+            struct=[]
+            number =[]
+            count=0
+            for m in moldf:
+                inchi = str(Chem.MolToInchi(m))
+                i=Chem.MolToSmiles(m)
+                struct.append(i)
+                # search experimental toxicity value
+                if inchi in self.res:
+                    exp_tox.append(self.res[inchi][0]['pchembl_value_mean'])
+                    std.append(self.res[inchi][0]['pchembl_value_std'])
+                    chembl_id.append(str(self.res[inchi][0]['molecule_chembl_id']))
+                    y_pred_con_tox.append('see experimental value')
+                    cpd_AD_vs_tox.append('-')
+                    count+=1         
+                    number.append(count)
+                    
+                else:
+                    # Estimination AD for toxicity
+                    neighbors_k_vs_tox = pairwise_distances(self.x_tr, Y=self.X, n_jobs=-1)
+                    neighbors_k_vs_tox.sort(0)
+                    similarity_vs_tox = neighbors_k_vs_tox
+                    cpd_value_vs_tox = similarity_vs_tox[0, :]
+                    cpd_AD_vs_tox_r = np.where(cpd_value_vs_tox <= self.model_AD_limit, "Inside AD", "Outside AD")
+                    # calculate toxicity
+                    y_pred_tox = self.model.predict(self.X)                
+                    value_ped_tox=round(y_pred_tox[0], 4)
+                    y_pred_con_tox.append(value_ped_tox)
+                    cpd_AD_vs_tox.append(cpd_AD_vs_tox_r[0])
+                    exp_tox.append("-")
+                    chembl_id.append("not detected")
+                    count+=1         
+                    number.append(count)
+        else:
+            # search experimental value     
+            exp_tox=[]
+            cas_id=[]
+            y_pred_con_tox=[]
+            cpd_AD_vs_tox=[]
+            struct=[]
+            number =[]
+            count=0
+            for m in moldf:
+                inchi = str(Chem.MolToInchi(m))
+                i=Chem.MolToSmiles(m)
+                struct.append(i)
+                # search experimental toxicity value
+                if inchi in self.res:
+                    exp_tox.append(self.res[inchi][0]['TOX_VALUE'])
+                    cas_id.append(str(self.res[inchi][0]['CAS_Number']))
+                    y_pred_con_tox.append('see experimental value')
+                    cpd_AD_vs_tox.append('-')
+                    count+=1         
+                    number.append(count)
+                    
+                else:
+                    # Estimination AD for toxicity
+                    neighbors_k_vs_tox = pairwise_distances(self.x_tr, Y=self.X, n_jobs=-1)
+                    neighbors_k_vs_tox.sort(0)
+                    similarity_vs_tox = neighbors_k_vs_tox
+                    cpd_value_vs_tox = similarity_vs_tox[0, :]
+                    cpd_AD_vs_tox_r = np.where(cpd_value_vs_tox <= self.model_AD_limit, "Inside AD", "Outside AD")
+                    # calculate toxicity
+                    y_pred_tox = self.model.predict(self.X)                    
+                    MolWt=ExactMolWt(m)
+                    value_ped_tox=(10**(y_pred_tox*-1)*1000)*MolWt
+                    value_ped_tox=round(value_ped_tox[0], 4)
+                    y_pred_con_tox.append(value_ped_tox)
+                    cpd_AD_vs_tox.append(cpd_AD_vs_tox_r[0])
+                    exp_tox.append("-")
+                    cas_id.append("not detected")
+                    count+=1         
+                    number.append(count) 
 
- 
-        if self.administration=='Oral':
-            categories=''
-            if isinstance(value_ped_tox,  float):
-                if value_ped_tox  <5:
-                    categories='Ia class, Extremely hazardous'
-                elif 5<=value_ped_tox<=50:
-                    categories='Ib class,Highly hazardous'
-                elif 50<=value_ped_tox<=2000:
-                    categories='II class,Moderately hazardous'
-                elif 2000<value_ped_tox<5000:
-                    categories='III class, Slightly hazardous'
-                else:
-                    categories='IV class, Unlikely to present acute hazard'
-            else:
-                if exp_tox<5:
-                    categories='Ia class, Extremely hazardous'
-                elif 5<=exp_tox<=50:
-                    categories='Ib class,Highly hazardous'
-                elif 50<=exp_tox<=2000:
-                    categories='II class,Moderately hazardous'
-                elif 2000<exp_tox<5000:
-                    categories='III class, Slightly hazardous'
-                else:
-                    categories='IV class, Unlikely to present acute hazard'
+
+        # visualization of the results
+        if self.activity=='Toxicity':
             common_inf = pd.DataFrame({'SMILES':struct, 'No.': number,'Predicted value toxicity, rat, oral, Ld50, mg/kg': y_pred_con_tox,
             'Applicability domain_tox': cpd_AD_vs_tox,
             'Experimental value toxicity, Ld50': exp_tox,
-            'CAS number': cas_id, 'Hazard_Categories':categories}, index=None)
+            'CAS number': cas_id}, index=None)
             predictions_pred = common_inf.set_index('No.')
             predictions_pred=predictions_pred.astype(str)
-            st.dataframe(predictions_pred.style.apply(toxicity_labels, axis=1))
-            st.write('Classification into toxicity classes (see column "Hazard_Categories") is carried out in accordance with the classification of the World Health Organization (https://www.who.int/publications/i/item/9789240005662)')
-            st.image('Toxicity_labels.png') 
+            st.dataframe(predictions_pred)
 
         else:
-            common_inf = pd.DataFrame({'SMILES':struct, 'No.': number,'Predicted value toxicity, Ld50, mg/kg': y_pred_con_tox,
+            common_inf = pd.DataFrame({'SMILES':struct, 'No.': number,'Predicted value pIC50': y_pred_con_tox,
             'Applicability domain_tox': cpd_AD_vs_tox,
             'Experimental value toxicity, Ld50': exp_tox,
-            'CAS number': cas_id}, index=None)
+            'CAS number': chembl_id}, index=None)
             predictions_pred = common_inf.set_index('No.')
             predictions_pred=predictions_pred.astype(str)
             st.dataframe(predictions_pred)
@@ -350,31 +421,78 @@ class set_molecules(Models):
             mime='text/csv',
         )
 
+class Med_chem_one():
+    def __init__(self, propetis:str, way_exp_data:list):
+        self.propetis=propetis
+        self.way_exp_data=way_exp_data
+        self.substructures_df = pd.read_csv(self.way_exp_data, sep="\s+")
+        # Converting SMARTS substructures into RDKit molecules
+        self.substructure_mols = [(row['name'], Chem.MolFromSmarts(row['smarts'])) for _, row in self.substructures_df.iterrows()]
+        if self.propetis=='vip_subst':
+            # Creating a topological fingerprint for the original molecule
+            self.mol_fp = FingerprintMols.FingerprintMol(m)
+        # A dictionary for found substructures with their atomic indexes
+        self.found_substructures = {}
+        for name, substructure in self.substructure_mols:
+            if substructure:
+                match = m.GetSubstructMatch(substructure)
+                if match:
+                    self.found_substructures[name] = match
+        # Checking if substructures are found
+        if self.propetis=='vip_subst':            
+            st.header('*The most significant sub-structures that increase the inhibitory activity of HDAC3*')
+        elif self.propetis=='Brenk_SA':
+            st.header('The Structural Alerts or Brenk filters [DOI:10.1002/cmdc.200700139] contain substructures with undesirable pharmacokinetics or toxicity*')            
+        else:
+            st.header('*Filter for PAINS*')
+
+            if self.found_substructures:
+            # A passage through each found substructure and a display of a molecule with isolated atoms
+                for name, atoms in self.found_substructures.items():
+                    st.write(f"The found fragment: {name}")
+                    # Calculating the Tanimoto coefficient
+                    self.substructure_mol = Chem.MolFromSmarts(self.substructures_df[self.substructures_df['name'] == name]['smarts'].values[0])
+                    if self.propetis=='vip_subst':
+                        self.sub_fp = FingerprintMols.FingerprintMol(self.substructure_mol)
+                        self.tanimoto_similarity = DataStructs.TanimotoSimilarity(self.mol_fp, self.sub_fp)
+                        st.write(f"Tanimoto coefficient: {self.tanimoto_similarity:.2f}")
+
+                    # visualization of a molecule with a highlighted sub-structure
+                    img = Draw.MolToImage(m, highlightAtoms=atoms, size=(300, 300))
+                    st.image(img)  # Display an image
+            else:
+                st.write(f"Substructures are not found in the molecule.")
+
+    
+
 st.write("<h3 style='text-align: center; color: black;'> Step 2. Select HDAC3 ingibitor activity or acute toxicity to mouse.</h3>", unsafe_allow_html=True)
-files_option2 = st.selectbox('', ('HDAC3','Toxicity'))
+files_option2 = st.selectbox('', ('HDAC3','Toxicity', 'Substructural search, PAINS, Brenk structural alerts'))
 if (files_option1 =='Draw the molecule and click the "Apply" button' or files_option1 =='SMILES')  and files_option2 =='HDAC3':
     if st.button('Run predictions!'):
-        Intrav_one=one_molecules('HDAC3', 'datasets/HDAC3_exp_data_inchi.csv', 'Models/HDAC3_GBR_MF_final_FS.pkl', 'Models/descriptorMF.zip',
+        HDAC3_one=one_molecules('HDAC3', 'datasets/HDAC3_exp_data_inchi.csv', 'Models/HDAC3_GBR_MF_final_FS.pkl', 'Models/descriptorMF.zip',
                              'descriptorMF.csv', 'Models/feature_name_rfecv_MF.txt', 2.78)
-        Intrav_one.seach_predic()
+        HDAC3_one.seach_predic()
 
-# if (files_option1 =='Draw the molecule and click the "Apply" button' or files_option1 =='SMILES')  and files_option2 == 'Oral':
-#     if st.button('Run predictions!'):
-#         Oral_one=one_molecules('Oral', 'datasets/rat_oral_LD50_inchi.csv', 'Models/Oral_CatBoost_MACCS.pkl',
-#                              [MACCSkeys.GenMACCSKeys(m)],
-#                               'Models/Oral_x_tr_MACCS.zip', 'Oral_x_tr_MACCS.csv', 2.48)
-#         Oral_one.seach_predic()
+if (files_option1 =='Draw the molecule and click the "Apply" button' or files_option1 =='SMILES')  and files_option2 == 'Toxicity':
+    if st.button('Run predictions!'):
+        Toxicity_one=one_molecules('Toxicity', 'datasets/mouse_intravenous_LD50_inchi.csv', 'Models/LD50_mouse_introvenus_SVM_MACCS.pkl',
+                              'Models/x_tr_MACCS.zip', 'x_tr_MACCS.csv', 'Models/feature_name_rfecv_toxicity.txt',  2.45)
+        Toxicity_one.seach_predic()
  
 if (files_option1  =='*CSV file containing SMILES' or files_option1=='MDL multiple SD file (*.sdf)')  and files_option2 =='HDAC3':
     if st.button('Run predictions!'):
-        Intrav_set=set_molecules('Intravenous', 'datasets/HDAC3_exp_data_inchi.csv', 'Models/HDAC3_GBR_MF_final_FS.pkl',
-                             [AllChem.GetMorganFingerprintAsBitVect(m, radius=2, nBits=1024, useFeatures=False, useChirality=False)],
-                              'Models/Intravenous_x_tr_MF.zip', 'Intravenous_x_tr_MF.csv', 4.8)
-        Intrav_set.seach_predic_csv()
+        HDAC3_set=set_molecules('HDAC3', 'datasets/HDAC3_exp_data_inchi.csv', 'Models/HDAC3_GBR_MF_final_FS.pkl', 'Models/descriptorMF.zip',
+                             'descriptorMF.csv', 'Models/feature_name_rfecv_MF.txt', 2.78)
+        HDAC3_set.seach_predic_csv()
 
-# if (files_option1  =='*CSV file containing SMILES' or files_option1=='MDL multiple SD file (*.sdf)')  and files_option2 =='Oral':
-#     if st.button('Run predictions!'):
-#         Oral=set_molecules('Oral', 'datasets/rat_oral_LD50_inchi.csv', 'Models/Oral_CatBoost_MACCS.pkl',
-#                              [MACCSkeys.GenMACCSKeys(m)],
-#                               'Models/Oral_x_tr_MACCS.zip', 'Oral_x_tr_MACCS.csv', 2.48)
-#         Oral.seach_predic_csv()
+if (files_option1  =='*CSV file containing SMILES' or files_option1=='MDL multiple SD file (*.sdf)')  and files_option2 =='Toxicity':
+    if st.button('Run predictions!'):
+        Toxicity_set=set_molecules('Toxicity', 'datasets/mouse_intravenous_LD50_inchi.csv', 'Models/LD50_mouse_introvenus_SVM_MACCS.pkl',
+                              'Models/x_tr_MACCS.zip', 'x_tr_MACCS.csv', 'Models/feature_name_rfecv_toxicity.txt',  2.45)
+        Toxicity_set.seach_predic_csv()
+if (files_option1 =='Draw the molecule and click the "Apply" button' or files_option1 =='SMILES')  and files_option2 =='Substructural search, PAINS, Brenk structural alerts':
+    if st.button('Run predictions!'):
+        Substructural_search_one=Med_chem_one('vip_subst', 'datasets/vip_substructures.csv')
+        Brenk_SA=Med_chem_one('structural_alerts', 'datasets/unwanted_substructures.csv')
+        PAINS=Med_chem_one('PAINS', 'datasets/PAINS.csv')
+        
