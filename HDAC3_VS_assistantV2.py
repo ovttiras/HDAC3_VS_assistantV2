@@ -62,16 +62,16 @@ with col1:
 with col2:
    st.header("OECD principles")
    st.image("figures/target.png", width=125)
-   st.text_area('Text to analyze', '''We follow the best practices for model development and validation recommended by guidelines of the Organization for Economic Cooperation and Development (OECD).  s that contribute to HDAC6 activity. The applicability domain (AD) of the models was calculated as Dcutoff = ⟨D⟩ + Zs, where «Z» is a similarity threshold parameter defined by a user (0.5 in this study) and «⟨D⟩» and «s» are the average and standard deviation, respectively, of all Euclidian distances in the multidimensional descriptor space between each compound and its nearest neighbors for all compounds in the training set. ''', height=350, label_visibility="hidden" )
+   st.text_area('Text to analyze', '''We follow the best practices for model development and validation recommended by guidelines of the Organization for Economic Cooperation and Development (OECD). The applicability domain (AD) of the models was calculated as Dcutoff = ⟨D⟩ + Zs, where «Z» is a similarity threshold parameter defined by a user (0.5 in this study) and «⟨D⟩» and «s» are the average and standard deviation, respectively, of all Euclidian distances in the multidimensional descriptor space between each compound and its nearest neighbors for all compounds in the training set. ''', height=350, label_visibility="hidden" )
 # st.write('Sentiment:', run_sentiment_analysis(txt))
 
 
 with col3:
    st.header("Acute toxicity")
-   st.image("figures/toxicity.png", width=125)
+   st.image("figures/mouse.png", width=125)
    st.text_area('Text to analyze', '''The application also allows to predict the level of toxicity (mouse, intravenous, LD50) of the studied compounds. One of the most common methods of administration of antitumor drugs is an intravenous one; it has a number of pharmacokinetic features, e.g., short-term but high active-substance concentration peaks, which can ultimately increase the acute toxicity of the drug. Therefore, a preliminary estimation of the toxicity of potential drugs during intravenous administration is extremely important ''', height=350, label_visibility="hidden" )
 with col4:
-   st.header("Structural Alert")
+   st.header("Structural Alerts")
    st.image("figures/alert.png", width=125)
    st.text_area('Text to analyze', '''Brenk filters which consists in a list of 105 fragments to be putatively toxic, chemically reactive, metabolically unstable or to bear properties responsible for poor pharmacokinetics. PAINS  are molecules containing substructures showing potent response in assays irrespective of the protein target. Such fragments, yielding false positive biological output.''', height=350, label_visibility="hidden" )
 
@@ -79,7 +79,7 @@ with open("manual.pdf", "rb") as file:
     btn=st.download_button(
     label="Click to download brief manual",
     data=file,
-    file_name="manual of Toxicity Estimator.pdf",
+    file_name="manual of HDAC3_VS_assistant web application.pdf",
     mime="application/octet-stream"
 )
 
@@ -101,6 +101,8 @@ st.write("<h3 style='text-align: center; color: black;'> Step 1. Draw molecule o
 files_option1 = st.selectbox('', ('Draw the molecule and click the "Apply" button','SMILES', '*CSV file containing SMILES', 'MDL multiple SD file (*.sdf)'))
 if files_option1 == 'Draw the molecule and click the "Apply" button':
     smiles = st_ketcher(height=400)
+    st.write('''N.B. To start the step 2 (prediction), don't forget to click the "Apply" button''')
+    st.write('If you want to create a new chemical structure, press the "Reset" button')
     st.write(f'The SMILES of the created  chemical: "{smiles}"')
     if len(smiles)!=0:
         canon_smi = Chem.MolToSmiles(Chem.MolFromSmiles(smiles),isomericSmiles = False)
@@ -293,7 +295,7 @@ class one_molecules(Models):
             st.header('**Prediction results:**')    
             common_inf = pd.DataFrame({'SMILES':smiles, 'Predicted value toxicity, mice, intravenous, Ld50, mg/kg': value_pred_tox,
                 'Applicability domain_tox': cpd_AD_vs_tox,
-                'Experimental value toxicity, rat, oral, Ld50': exp_tox, 
+                'Experimental value toxicity, mice, intravenous, Ld50, mg/kg': exp_tox, 
                 'CAS number': cas_id}, index=[1])
             predictions_pred=common_inf.astype(str) 
             st.dataframe(predictions_pred)
@@ -301,8 +303,8 @@ class one_molecules(Models):
         else:
             st.header('**Prediction results:**')             
             common_inf = pd.DataFrame({'SMILES':smiles, 'Predicted value pIC50': value_pred_tox,
-            'Applicability domain_tox': cpd_AD_vs_tox,
-            'Experimental value toxicity,rat, intravenous, Ld50': exp, 'STD': std, 
+            'Applicability domain_HDAC3': cpd_AD_vs_tox,
+            'Experimental value value pIC50': exp, 'STD': std, 
             'chembl_ID': chembl_id}, index=[1])
             predictions_pred=common_inf.astype(str) 
             st.dataframe(predictions_pred) 
@@ -439,33 +441,27 @@ class Med_chem_one():
                 if match:
                     self.found_substructures[name] = match
         # Checking if substructures are found
-        if self.propetis=='vip_subst':            
-            st.header('*The most significant sub-structures that increase the inhibitory activity of HDAC3*')
-        elif self.propetis=='Brenk_SA':
-            st.header('The Structural Alerts or Brenk filters [DOI:10.1002/cmdc.200700139] contain substructures with undesirable pharmacokinetics or toxicity*')            
-        else:
-            st.header('*Filter for PAINS*')
-
-            if self.found_substructures:
+        if self.found_substructures:
             # A passage through each found substructure and a display of a molecule with isolated atoms
                 for name, atoms in self.found_substructures.items():
-                    st.write(f"The found fragment: {name}")
+                    st.write(f"The found {self.propetis}: {name}")
                     # Calculating the Tanimoto coefficient
                     self.substructure_mol = Chem.MolFromSmarts(self.substructures_df[self.substructures_df['name'] == name]['smarts'].values[0])
                     if self.propetis=='vip_subst':
                         self.sub_fp = FingerprintMols.FingerprintMol(self.substructure_mol)
                         self.tanimoto_similarity = DataStructs.TanimotoSimilarity(self.mol_fp, self.sub_fp)
                         st.write(f"Tanimoto coefficient: {self.tanimoto_similarity:.2f}")
-
+                    if self.propetis=='Brenk_SA':
+                        st.header('The Structural Alerts or Brenk filters [DOI:10.1002/cmdc.200700139] contain substructures with undesirable pharmacokinetics or toxicity*')
+                    if self.propetis=='Pains':
+                        st.header('*Filter for PAINS*')
                     # visualization of a molecule with a highlighted sub-structure
                     img = Draw.MolToImage(m, highlightAtoms=atoms, size=(300, 300))
                     st.image(img)  # Display an image
-            else:
-                st.write(f"Substructures are not found in the molecule.")
+        else:
+            st.write(f"The {self.propetis} are not found in the molecule.")
 
-    
-
-st.write("<h3 style='text-align: center; color: black;'> Step 2. Select HDAC3 ingibitor activity or acute toxicity to mouse.</h3>", unsafe_allow_html=True)
+st.write("<h3 style='text-align: center; color: black;'> Step 2. Select prediction of HDAC3 inhibitor activity or acute toxicity to mice or substructural search for preferred or undesirable fragments</h3>", unsafe_allow_html=True)
 files_option2 = st.selectbox('', ('HDAC3','Toxicity', 'Substructural search, PAINS, Brenk structural alerts'))
 if (files_option1 =='Draw the molecule and click the "Apply" button' or files_option1 =='SMILES')  and files_option2 =='HDAC3':
     if st.button('Run predictions!'):
@@ -492,7 +488,7 @@ if (files_option1  =='*CSV file containing SMILES' or files_option1=='MDL multip
         Toxicity_set.seach_predic_csv()
 if (files_option1 =='Draw the molecule and click the "Apply" button' or files_option1 =='SMILES')  and files_option2 =='Substructural search, PAINS, Brenk structural alerts':
     if st.button('Run predictions!'):
-        Substructural_search_one=Med_chem_one('vip_subst', 'datasets/vip_substructures.csv')
-        Brenk_SA=Med_chem_one('structural_alerts', 'datasets/unwanted_substructures.csv')
-        PAINS=Med_chem_one('PAINS', 'datasets/PAINS.csv')
+        Substructural_search_one=Med_chem_one('fragments that increase the activity to inhibit HDAC3', 'datasets/vip_substructures.csv')
+        Brenk_SA=Med_chem_one('Brenk filter', 'datasets/unwanted_substructures.csv')
+        Pains=Med_chem_one('PAINS', 'datasets/PAINS.csv')
         
